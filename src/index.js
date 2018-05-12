@@ -45,7 +45,7 @@ const Comment = sequelize.define('comment', {
       autoIncrement: true,
       default: 1
     },
-   title: Sequelize.STRING
+    description: Sequelize.STRING
 });
 
 const Answer = sequelize.define('answer', {
@@ -104,7 +104,10 @@ var typeDefs = `
     }
     type Mutation {
       createUser(name: String): User 
-      createPost(type: PostType, title: String, userID: ID): Post 
+      createPost(type: PostType, title: String, userID: ID): Post
+      createComment(description: String, userID: ID, postID: ID, answerID: ID): Comment
+      createAnswer(title: String, description: String, userID: ID, postID: ID): Answer
+      createTag(text: String, postID: ID): Tag
     }
     interface Commentable {
         id: ID
@@ -161,63 +164,6 @@ var typeDefs = `
         id: ID
         text: String
     }`;
-function mockUser() {
-   return {
-    id: casual.integer(from = 1, to = 100),
-    name: casual.name,
-    image: "https://orig00.deviantart.net/b94b/f/2015/230/0/4/google_default_profile_picture_by_mircrosoft18-d967dkr.jpg",
-    points: casual.integer(from = -100, to = 100),
-    created: casual._unix_time,
-    type: casual.boolean ? "REGULAR" : "COP"
-   };
-}
-
-function mockComment(parent, user) {
-    return {
-    id: casual.integer(from = 1, to = 100),
-    description: casual.description,
-    created: casual._unix_time,
-    user: user,
-    parent: parent
-   };
-}
-function mockAnswer(user) {
-    var id = casual.integer(from = 1, to = 100);
-    return {
-        id: id,
-        title: casual.title,
-        description: casual.description,
-        totalVotes: casual.integer(from = -100, to = 100),
-        created: casual._unix_time,
-        creator: user,
-        comments: mockComment({id: id}, user),
-        accepted: casual.boolean
-    };
-}
-function mockTag() {
-    return {
-        id: casual.integer(from = 1, to = 100),
-        text: casual.word                   
-    };
-}
-
-function mockPost(user) {
-    var id = casual.integer(from = 1, to = 100);
-    return {
-        id: id,
-        title: casual.title,
-        description: casual.description,
-        totalVotes: casual.integer(from = -100, to = 100),
-        creator: user,
-        created: casual._unix_time,
-        insideOnly: casual.boolean,
-        type: casual.boolean ? "QUESTION" : "ARTICLE",
-        comments: [mockComment({id: id}, user)],
-        answers: [mockAnswer(user)],
-        tags: [mockTag(), mockTag()]
-    };
-}
-
 
 sequelize.sync().then(() => {
   var resolvers = {
@@ -231,20 +177,23 @@ sequelize.sync().then(() => {
       },
       Query: {
           user(obj, args, context, info) {
-            console.log(args.id);
             return User.find({ where: {id: args.id} });
           },
           posts: () => {
-            return Post.findAll({ include: [{ all: true }]});
+            return Post.findAll({ include: [{ all: true }]}).then((posts) => {
+              posts.forEach(function(post) {
+                let user = User.find({ where: {id: post.userId }});
+                post.creator = user;
+                });
+                return posts;
+              });
           }, 
           post(obj, args, context, info) {
-              return Post.find({ where: {id: args.id}}).then((post) => {
-                let user = User.find({ where: {id: post.userId }});
-                
-                post.creator = user;
-                console.log(post);
-                return post;
-              });
+            return Post.find({ where: {id: args.id}}).then((post) => {
+              let user = User.find({ where: {id: post.userId }});
+              post.creator = user;
+              return post;
+            });
           }
       },
       Mutation: {
@@ -259,11 +208,36 @@ sequelize.sync().then(() => {
             title: title
           }).then((post) => {
             User.find({where: {id: userID}}).then((user) => {
-              console.log(user);
               post.setUser(user);
             });
           });
-        } 
+        },
+        createComment(_, { description, userID, postID, answerID }) {
+          let comment = Comment.create({
+            description: description
+          }).then((comment) => {
+            comment.update({
+              userId: userID
+            });
+            if (postID) {
+              comment.update({
+              postId: postID
+            });
+            } else {
+              comment.update({
+              answerId: answerID
+            });
+            }
+          });
+        },
+        createAnswer(_, {title, description, userID, postID}) {
+          Answer.create({
+            title: title,
+            userId: userID,
+            postId: postID,
+            description: description
+          });
+        }
       }
   };
 
