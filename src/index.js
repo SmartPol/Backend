@@ -175,9 +175,11 @@ sequelize.sync().then(() => {
           posts: () => {
             return Post.findAll({ include: [{ all: true }]}).then((posts) => {
               posts.forEach(function(post) {
-                let user = User.find({ where: {id: post.userId }});
-                post.creator = user;
-                });
+                  post.creator = User.find({ where: {id: post.userId }});
+                  post.answers = Answer.findAll({ where: {postId: post.id, }});
+                  post.comments = Comment.findAll({ where: {postId: post.id }});
+                  post.tags = Tag.findAll({ where: {postId: post.id }});
+              });
                 return posts;
               });
           }, 
