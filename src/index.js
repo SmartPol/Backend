@@ -234,7 +234,7 @@ sequelize.sync().then(() => {
           });
         },
         createPost(_, { title, description, insideOnly, type, userId }) {
-          let post = Post.create({
+          return Post.create({
             title: title,
             description: description,
             totalVotes: 0,
@@ -244,7 +244,7 @@ sequelize.sync().then(() => {
           });
         },
         createComment(_, { description, postId, userId, answerId}) {
-          Comment.create({
+          return Comment.create({
             description: description,
             postId: postId,
             userId: userId,
@@ -252,7 +252,7 @@ sequelize.sync().then(() => {
           });
         },
         createAnswer(_, {title, description, accepted, postId, userId}) {
-          Answer.create({
+          return Answer.create({
             title: title,
             description: description,
             totalVotes: 0,
@@ -262,7 +262,7 @@ sequelize.sync().then(() => {
           });
         },
         createTag(_, {text, postId}) {
-           Tag.create({
+           return Tag.create({
             text: text,
             postId: postId
           });
