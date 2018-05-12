@@ -2,6 +2,7 @@ var express = require('express');
 var { GraphQLServer } = require('graphql-yoga');
 var { buildSchema } = require('graphql');
 var casual = require('casual');
+var uuid = require('uuid/v4');
 var { createConnection, EntitySchema } = require('typeorm');
 const Sequelize = require('sequelize');
 const sequelize = new Sequelize('smart-pol', 'root', '', {
@@ -10,87 +11,100 @@ const sequelize = new Sequelize('smart-pol', 'root', '', {
 });
 
 const User = sequelize.define('user', {
-  username: Sequelize.STRING,
-  birthday: Sequelize.DATE
+    id: {
+      type: Sequelize.INTEGER,
+      unique: true,
+      primaryKey: true,
+      autoIncrement: true,
+      default: 1
+    },
+    name: Sequelize.STRING,
+    description: Sequelize.STRING,
+    headLine: Sequelize.STRING,
+    image: Sequelize.STRING,
+    points: Sequelize.INTEGER,
+    created: Sequelize.STRING,
+    type: Sequelize.ENUM('REGULAR', 'COP')
 });
 const Tag = sequelize.define('tag', {
+    id: {
+      type: Sequelize.INTEGER,
+      unique: true,
+      primaryKey: true,
+      autoIncrement: true,
+      default: 1
+    },
+  text: Sequelize.STRING
 });
 
 const Comment = sequelize.define('comment', {
+    id: {
+      type: Sequelize.INTEGER,
+      unique: true,
+      primaryKey: true,
+      autoIncrement: true,
+      default: 1
+    },
+   title: Sequelize.STRING
 });
 
 const Answer = sequelize.define('answer', {
-});
-/*
- *id: ID
-        title: String
-        description: String
-        totalVotes: Int
-        created: String
-        creator: User
-        insideOnly: Boolean
-        type: PostType
-        comments: [Comment]
-        answers: [Answer]
-        tags: [Tag]
-        */
-const Post = sequelize.define('post', {
+    id: {
+      type: Sequelize.INTEGER,
+      unique: true,
+      primaryKey: true,
+      autoIncrement: true,
+      default: 1
+    },
     title: Sequelize.STRING,
     description: Sequelize.STRING,
     totalVotes: Sequelize.INTEGER,
     created: Sequelize.STRING,
-   // creator: [User],
+    //creator: User,
+    accepted: Sequelize.BOOLEAN,
+    type: Sequelize.ENUM('QUESTION', 'ARTICLE'),
+   //include: [Comment]
+});
+
+const Post = sequelize.define('post', {
+    id: {
+      type: Sequelize.INTEGER,
+      unique: true,
+      primaryKey: true,
+      autoIncrement: true,
+      default: 1
+    },
+    title: Sequelize.STRING,
+    description: Sequelize.STRING,
+    totalVotes: Sequelize.INTEGER,
+    created: Sequelize.STRING,
+    //creator: User,
     insideOnly: Sequelize.BOOLEAN,
     type: Sequelize.ENUM('QUESTION', 'ARTICLE'),
-   // comments: Sequelize.STRING,
-   // answers: [Sequelize.STRING,
-   // tags: Sequelize.STRING
+   //include: [Comment, Tag, Answer]
 });
-Post.hasMany(Comment, {through: 'creator'});
-/*todo
-sequelize.sync()
-  .then(() => User.create({
-    username: 'janedoe',
-    birthday: new Date(1980, 6, 20)
-  }))
-  .then(jane => {
-    console.log(jane.toJSON());
-  });
-  */
 
-/*createConnection({
-    type: "mysql",
-    host: "localhost",
-    port: 3306,
-    username: "root",
-    password: "",
-    database: "smart-pol",
-    synchronize: true,
-    entitySchemas: [
-         new EntitySchema(require("./entity/Post"))
-    ]
-}).then(function (connection) {
+Post.hasMany(Tag);
+Post.hasMany(Comment);
+Post.hasMany(Answer);
+Post.belongsTo(User);
 
- console.log(  new EntitySchema(require("./entity/Post")));
- console.log("-------");
-    var post = {
-        title: "Control flow based type analysis"
-    };
+//User.hasMany(Post);
+User.hasMany(Comment);
+User.hasMany(Answer);
 
-    var postRepository = connection.getRepository("Post");
-   
+Answer.hasMany(Comment);
 
-
-
-}).catch(function(error) {
-    console.log("Error: ", error);
-});
-*/
 var typeDefs = `
     type Query {
       posts: [Post]
       post(id: ID): Post
+      user(id: ID): User
       answersByUser(userId: ID): [Answer]
+    }
+    type Mutation {
+      createUser(name: String): User 
+      createPost(type: PostType, title: String, userID: ID): Post 
     }
     interface Commentable {
         id: ID
@@ -203,24 +217,57 @@ function mockPost(user) {
         tags: [mockTag(), mockTag()]
     };
 }
-var resolvers = {
-    Commentable: {
-        __resolveType: (obj) => {
-            if (obj.type) {
-                return "Post";
-            }
-            return "Answer";
-        }
-    },
-    Query: {
-        posts: () => {
-        return [mockPost(mockUser()),mockPost(mockUser())];
-        }, 
-        post: (id) => {
-            return mockPost(mockUser());
-        }
-    }
-};
 
-const server = new GraphQLServer({typeDefs, resolvers});
-server.start();
+
+sequelize.sync().then(() => {
+  var resolvers = {
+      Commentable: {
+          __resolveType: (obj) => {
+              if (obj.type) {
+                  return "Post";
+              }
+              return "Answer";
+          }
+      },
+      Query: {
+          user(obj, args, context, info) {
+            console.log(args.id);
+            return User.find({ where: {id: args.id} });
+          },
+          posts: () => {
+            return Post.findAll({ include: [{ all: true }]});
+          }, 
+          post(obj, args, context, info) {
+              return Post.find({ where: {id: args.id}}).then((post) => {
+                let user = User.find({ where: {id: post.userId }});
+                
+                post.creator = user;
+                console.log(post);
+                return post;
+              });
+          }
+      },
+      Mutation: {
+        createUser(_, { name }) {
+          return User.create({
+            name: casual.name
+          });
+        },
+        createPost(_, { type, title, userID }) {
+          let post = Post.create({
+            type: type,
+            title: title
+          }).then((post) => {
+            User.find({where: {id: userID}}).then((user) => {
+              console.log(user);
+              post.setUser(user);
+            });
+          });
+        } 
+      }
+  };
+
+  const server = new GraphQLServer({typeDefs, resolvers});
+  server.start();
+
+});
