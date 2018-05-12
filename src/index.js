@@ -229,7 +229,7 @@ sequelize.sync().then(() => {
         },
         createUser(_, { name, description, headLine, image, points, type}) {
 
-          return User.findOrCreate({
+          return User.findOrCreate ({
             where: {name: name},
             defaults: {
               name: name || "",
@@ -240,8 +240,7 @@ sequelize.sync().then(() => {
               type: type
             } 
           }).then(function(user) {
-            console.log(user);
-            return user;
+            return user[0];
           });
         },
         createPost(_, { title, description, insideOnly, type, userId }) {
