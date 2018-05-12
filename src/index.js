@@ -1,8 +1,6 @@
 var express = require('express');
 var { GraphQLServer } = require('graphql-yoga');
 var { buildSchema } = require('graphql');
-var casual = require('casual');
-var uuid = require('uuid/v4');
 var { createConnection, EntitySchema } = require('typeorm');
 require("dotenv").config();
 const Sequelize = require('sequelize');
@@ -24,7 +22,6 @@ const User = sequelize.define('user', {
     headLine: Sequelize.STRING,
     image: Sequelize.STRING,
     points: Sequelize.INTEGER,
-    created: Sequelize.STRING,
     type: Sequelize.ENUM('REGULAR', 'COP')
 });
 const Tag = sequelize.define('tag', {
@@ -60,11 +57,7 @@ const Answer = sequelize.define('answer', {
     title: Sequelize.STRING,
     description: Sequelize.STRING,
     totalVotes: Sequelize.INTEGER,
-    created: Sequelize.STRING,
-    //creator: User,
-    accepted: Sequelize.BOOLEAN,
-    type: Sequelize.ENUM('QUESTION', 'ARTICLE'),
-   //include: [Comment]
+    accepted: Sequelize.BOOLEAN
 });
 
 const Post = sequelize.define('post', {
@@ -78,11 +71,8 @@ const Post = sequelize.define('post', {
     title: Sequelize.STRING,
     description: Sequelize.STRING,
     totalVotes: Sequelize.INTEGER,
-    created: Sequelize.STRING,
-    //creator: User,
     insideOnly: Sequelize.BOOLEAN,
-    type: Sequelize.ENUM('QUESTION', 'ARTICLE'),
-   //include: [Comment, Tag, Answer]
+    type: Sequelize.ENUM('QUESTION', 'ARTICLE')
 });
 
 Post.hasMany(Tag);
@@ -90,7 +80,6 @@ Post.hasMany(Comment);
 Post.hasMany(Answer);
 Post.belongsTo(User);
 
-//User.hasMany(Post);
 User.hasMany(Comment);
 User.hasMany(Answer);
 
@@ -98,17 +87,19 @@ Answer.hasMany(Comment);
 
 var typeDefs = `
     type Query {
+      clearDB(test:Boolean): Boolean
       posts: [Post]
       post(id: ID): Post
       user(id: ID): User
       answersByUser(userId: ID): [Answer]
     }
     type Mutation {
-      createUser(name: String): User 
-      createPost(type: PostType, title: String, userID: ID): Post
-      createComment(description: String, userID: ID, postID: ID, answerID: ID): Comment
-      createAnswer(title: String, description: String, userID: ID, postID: ID): Answer
-      createTag(text: String, postID: ID): Tag
+     
+      createUser(name: String, description: String, headLine: String, image: String, points: Int, type: UserType): User 
+      createPost(title: String, description: String, totalVotes: Int, insideOnly: Boolean, type: PostType, userId: ID): Post
+      createComment(description: String, postId: ID, userId: ID, answerId: ID): Comment
+      createAnswer(title: String, description: String, totalVotes: Int, accepted: Boolean, postId: ID, userId: ID): Answer
+      createTag(text: String, postId: ID): Tag
     }
     interface Commentable {
         id: ID
@@ -137,7 +128,6 @@ var typeDefs = `
         headLine: String
         image: String
         points: Int
-        created: String
         type: UserType
     }
      enum UserType {
@@ -148,15 +138,13 @@ var typeDefs = `
     type Comment {
         id: ID
         description: String
-        created: String
-        user: User
+        creator: User
     }
     type Answer implements Commentable{
         id: ID
         title: String
         description: String
         totalVotes: Int
-        created: String
         creator: User
         comments: [Comment]
         accepted: Boolean
@@ -169,14 +157,18 @@ var typeDefs = `
 sequelize.sync().then(() => {
   var resolvers = {
       Commentable: {
-          __resolveType: (obj) => {
-              if (obj.type) {
-                  return "Post";
-              }
-              return "Answer";
-          }
+        __resolveType: (obj) => {
+            if (obj.type) {
+                return "Post";
+            }
+            return "Answer";
+        }
       },
       Query: {
+          clearDB: (drop) => {
+            sequelize.drop();
+          },
+          
           user(obj, args, context, info) {
             return User.find({ where: {id: args.id} });
           },
@@ -198,45 +190,48 @@ sequelize.sync().then(() => {
           }
       },
       Mutation: {
-        createUser(_, { name }) {
+        createUser(_, { name, description, headLine, image, points, type}) {
           return User.create({
-            name: casual.name
+            name: name || "",
+            description: description || "",
+            headLine:headLine || "",
+            image: image || "",
+            points: points || 0,
+            type: type
           });
         },
-        createPost(_, { type, title, userID }) {
+        createPost(_, { title, description, totalVotes, insideOnly, type, userId }) {
           let post = Post.create({
+            title: title,
+            description: description,
+            totalVotes: totalVotes,
+            insideOnly: insideOnly,
             type: type,
-            title: title
-          }).then((post) => {
-            User.find({where: {id: userID}}).then((user) => {
-              post.setUser(user);
-            });
+            userId: userId
           });
         },
-        createComment(_, { description, userID, postID, answerID }) {
-          let comment = Comment.create({
-            description: description
-          }).then((comment) => {
-            comment.update({
-              userId: userID
-            });
-            if (postID) {
-              comment.update({
-              postId: postID
-            });
-            } else {
-              comment.update({
-              answerId: answerID
-            });
-            }
+        createComment(_, { description, postId, userId, answerId}) {
+          Comment.create({
+            description: description,
+            postId: postId,
+            userId: userId,
+            answerId: answerId
           });
         },
-        createAnswer(_, {title, description, userID, postID}) {
+        createAnswer(_, {title, description, totalVotes, accepted, postId, userId}) {
           Answer.create({
             title: title,
-            userId: userID,
-            postId: postID,
-            description: description
+            description: description,
+            totalVotes: totalVotes,
+            accepted: !!accepted,
+            postId: postId,
+            userId: userId
+          });
+        },
+        createTag(_, {text, postId}) {
+           Tag.create({
+            text: text,
+            postId: postId
           });
         }
       }
