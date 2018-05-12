@@ -4,9 +4,10 @@ var { buildSchema } = require('graphql');
 var casual = require('casual');
 var uuid = require('uuid/v4');
 var { createConnection, EntitySchema } = require('typeorm');
+require("dotenv").config();
 const Sequelize = require('sequelize');
-const sequelize = new Sequelize('smart-pol', 'root', '', {
-  host: 'localhost',
+const sequelize = new Sequelize(process.env.DB_DATABASE, process.env.DB_USERNAME, process.env.DB_PASSWORD, {
+  host: process.env.DB_HOST,
   dialect: 'mysql',
 });
 
