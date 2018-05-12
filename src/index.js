@@ -2,7 +2,90 @@ var express = require('express');
 var { GraphQLServer } = require('graphql-yoga');
 var { buildSchema } = require('graphql');
 var casual = require('casual');
+var { createConnection, EntitySchema } = require('typeorm');
+const Sequelize = require('sequelize');
+const sequelize = new Sequelize('smart-pol', 'root', '', {
+  host: 'localhost',
+  dialect: 'mysql',
+});
 
+const User = sequelize.define('user', {
+  username: Sequelize.STRING,
+  birthday: Sequelize.DATE
+});
+const Tag = sequelize.define('tag', {
+});
+
+const Comment = sequelize.define('comment', {
+});
+
+const Answer = sequelize.define('answer', {
+});
+/*
+ *id: ID
+        title: String
+        description: String
+        totalVotes: Int
+        created: String
+        creator: User
+        insideOnly: Boolean
+        type: PostType
+        comments: [Comment]
+        answers: [Answer]
+        tags: [Tag]
+        */
+const Post = sequelize.define('post', {
+    title: Sequelize.STRING,
+    description: Sequelize.STRING,
+    totalVotes: Sequelize.INTEGER,
+    created: Sequelize.STRING,
+   // creator: [User],
+    insideOnly: Sequelize.BOOLEAN,
+    type: Sequelize.ENUM('QUESTION', 'ARTICLE'),
+   // comments: Sequelize.STRING,
+   // answers: [Sequelize.STRING,
+   // tags: Sequelize.STRING
+});
+Post.hasMany(Comment, {through: 'creator'});
+/*todo
+sequelize.sync()
+  .then(() => User.create({
+    username: 'janedoe',
+    birthday: new Date(1980, 6, 20)
+  }))
+  .then(jane => {
+    console.log(jane.toJSON());
+  });
+  */
+
+/*createConnection({
+    type: "mysql",
+    host: "localhost",
+    port: 3306,
+    username: "root",
+    password: "",
+    database: "smart-pol",
+    synchronize: true,
+    entitySchemas: [
+         new EntitySchema(require("./entity/Post"))
+    ]
+}).then(function (connection) {
+
+ console.log(  new EntitySchema(require("./entity/Post")));
+ console.log("-------");
+    var post = {
+        title: "Control flow based type analysis"
+    };
+
+    var postRepository = connection.getRepository("Post");
+   
+
+
+
+}).catch(function(error) {
+    console.log("Error: ", error);
+});
+*/
 var typeDefs = `
     type Query {
       posts: [Post]
