@@ -111,7 +111,7 @@ var typeDefs = `
         title: String
         description: String
         totalVotes: Int
-        created: String
+        createdAt: String
         creator: User
         insideOnly: Boolean
         type: PostType
@@ -130,6 +130,7 @@ var typeDefs = `
         headLine: String
         image: String
         points: Int
+        createdAt: String
         type: UserType
     }
      enum UserType {
@@ -141,6 +142,7 @@ var typeDefs = `
         id: ID
         description: String
         creator: User
+        createdAt: String
     }
     type Answer implements Commentable{
         id: ID
@@ -150,10 +152,12 @@ var typeDefs = `
         creator: User
         comments: [Comment]
         accepted: Boolean
+        createdAt: String
     }
     type Tag {
         id: ID
         text: String
+        createdAt: String
     }`;
 
 sequelize.sync().then(() => {
@@ -224,6 +228,7 @@ sequelize.sync().then(() => {
             });
         },
         createUser(_, { name, description, headLine, image, points, type}) {
+
           return User.findOrCreate({
             where: {name: name},
             defaults: {
@@ -233,8 +238,10 @@ sequelize.sync().then(() => {
               image: image || "",
               points: points || 0,
               type: type
-            }
-            
+            } 
+          }).then(function(user) {
+            console.log(user);
+            return user;
           });
         },
         createPost(_, { title, description, insideOnly, type, userId }) {
