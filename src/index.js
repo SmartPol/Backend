@@ -88,7 +88,7 @@ Answer.hasMany(Comment);
 var typeDefs = `
     type Query {
       clearDB(test:Boolean): Boolean
-      posts: [Post]
+      posts(type: String, search: String): [Post]
       post(id: ID): Post
       user(id: ID): User
       answersByUser(userId: ID): [Answer]
@@ -172,14 +172,23 @@ sequelize.sync().then(() => {
           user(obj, args, context, info) {
             return User.find({ where: {id: args.id} });
           },
-          posts: () => {
-            return Post.findAll({ include: [{ all: true }]}).then((posts) => {
-              posts.forEach(function(post) {
+          posts(obj, args, context, info) {
+            var type = args.type;
+            var search = args.search;
+            var cond = { where: {} };
+            if (type === 'QUESTION' || type ==='ARTICLE') {
+              cond.where.type = type;
+            }
+            if (search) {
+              cond.where.title = sequelize.where(sequelize.fn("LOWER", sequelize.col("title")), "LIKE", "%" + search + "%")
+            }
+            return Post.findAll(cond).then((posts) => {
+                posts.forEach(function(post) {
                   post.creator = User.find({ where: {id: post.userId }});
                   post.answers = Answer.findAll({ where: {postId: post.id, }});
                   post.comments = Comment.findAll({ where: {postId: post.id }});
                   post.tags = Tag.findAll({ where: {postId: post.id }});
-              });
+                });
                 return posts;
               });
           }, 
