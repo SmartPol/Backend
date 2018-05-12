@@ -214,7 +214,7 @@ var resolvers = {
     },
     Query: {
         posts: () => {
-        return [mockPost(mockUser())];
+        return [mockPost(mockUser()),mockPost(mockUser())];
         }, 
         post: (id) => {
             return mockPost(mockUser());
