@@ -100,6 +100,8 @@ var typeDefs = `
       createComment(description: String, postId: ID, userId: ID, answerId: ID): Comment
       createAnswer(title: String, description: String, totalVotes: Int, accepted: Boolean, postId: ID, userId: ID): Answer
       createTag(text: String, postId: ID): Tag
+      updatePostVote(postId: ID, increase: Boolean): Post
+      updateAnswerVote(answerId: ID, increase: Boolean): Post
     }
     interface Commentable {
         id: ID
@@ -177,7 +179,7 @@ sequelize.sync().then(() => {
           posts(obj, args, context, info) {
             var type = args.type;
             var search = args.search;
-            var cond = { where: {} };
+            var cond = { where: {}, order: [['totalVotes', 'DESC']] };
             if (type === 'QUESTION' || type ==='ARTICLE') {
               cond.where.type = type;
             }
@@ -205,6 +207,22 @@ sequelize.sync().then(() => {
           }
       },
       Mutation: {
+        updatePostVote(_, {postId, increase}) {
+           return Post.find({ where: {id: postId}}).then((post) => {
+              var vote = post.totalVotes + (increase ? 1 : -1);
+              post.update({
+                totalVotes: vote
+              });
+            });
+        },
+         updateAnswerVote(_, {answerId, increase}) {
+           return Answer.find({ where: {id: answerId}}).then((answer) => {
+              var vote = answer.totalVotes + (increase ? 1 : -1);
+              answer.update({
+                totalVotes: vote
+              });
+            });
+        },
         createUser(_, { name, description, headLine, image, points, type}) {
           return User.create({
             name: name || "",
