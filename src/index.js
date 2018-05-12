@@ -87,7 +87,7 @@ Answer.hasMany(Comment);
 
 var typeDefs = `
     type Query {
-      clearDB(test:Boolean): Boolean
+      clearDB(drop:Boolean): Boolean
       posts(type: String, search: String): [Post]
       post(id: ID): Post
       user(id: ID): User
@@ -165,8 +165,10 @@ sequelize.sync().then(() => {
         }
       },
       Query: {
-          clearDB: (drop) => {
-            sequelize.drop();
+          clearDB (obj, args, context, info){
+            if(args.drop) {
+             sequelize.drop(); 
+            }
           },
           
           user(obj, args, context, info) {
@@ -180,8 +182,10 @@ sequelize.sync().then(() => {
               cond.where.type = type;
             }
             if (search) {
-              cond.where.title = sequelize.where(sequelize.fn("LOWER", sequelize.col("title")), "LIKE", "%" + search + "%")
-            }
+             
+              var andCond = sequelize.or(sequelize.where(sequelize.fn("LOWER", sequelize.col("title")), "LIKE", "%" + search + "%"), sequelize.where(sequelize.fn("LOWER", sequelize.col("description")), "LIKE", "%" + search + "%"))
+               cond.where = sequelize.and(cond.where, andCond);
+           }
             return Post.findAll(cond).then((posts) => {
                 posts.forEach(function(post) {
                   post.creator = User.find({ where: {id: post.userId }});
