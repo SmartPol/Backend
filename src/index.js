@@ -96,9 +96,9 @@ var typeDefs = `
     type Mutation {
      
       createUser(name: String, description: String, headLine: String, image: String, points: Int, type: UserType): User 
-      createPost(title: String, description: String, totalVotes: Int, insideOnly: Boolean, type: PostType, userId: ID): Post
+      createPost(title: String, description: String, insideOnly: Boolean, type: PostType, userId: ID): Post
       createComment(description: String, postId: ID, userId: ID, answerId: ID): Comment
-      createAnswer(title: String, description: String, totalVotes: Int, accepted: Boolean, postId: ID, userId: ID): Answer
+      createAnswer(title: String, description: String, accepted: Boolean, postId: ID, userId: ID): Answer
       createTag(text: String, postId: ID): Tag
       updatePostVote(postId: ID, increase: Boolean): Post
       updateAnswerVote(answerId: ID, increase: Boolean): Post
@@ -233,11 +233,11 @@ sequelize.sync().then(() => {
             type: type
           });
         },
-        createPost(_, { title, description, totalVotes, insideOnly, type, userId }) {
+        createPost(_, { title, description, insideOnly, type, userId }) {
           let post = Post.create({
             title: title,
             description: description,
-            totalVotes: totalVotes,
+            totalVotes: 0,
             insideOnly: insideOnly,
             type: type,
             userId: userId
@@ -251,11 +251,11 @@ sequelize.sync().then(() => {
             answerId: answerId
           });
         },
-        createAnswer(_, {title, description, totalVotes, accepted, postId, userId}) {
+        createAnswer(_, {title, description, accepted, postId, userId}) {
           Answer.create({
             title: title,
             description: description,
-            totalVotes: totalVotes,
+            totalVotes: 0,
             accepted: !!accepted,
             postId: postId,
             userId: userId
