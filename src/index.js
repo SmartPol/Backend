@@ -281,6 +281,8 @@ sequelize.sync().then(() => {
   };
 
   const server = new GraphQLServer({typeDefs, resolvers});
-  server.start();
+  server.start({
+    endpoint: '/api'
+    });
 
 });
