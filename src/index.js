@@ -224,13 +224,17 @@ sequelize.sync().then(() => {
             });
         },
         createUser(_, { name, description, headLine, image, points, type}) {
-          return User.create({
-            name: name || "",
-            description: description || "",
-            headLine:headLine || "",
-            image: image || "",
-            points: points || 0,
-            type: type
+          return User.findOrCreate({
+            where: {name: name},
+            defaults: {
+              name: name || "",
+              description: description || "",
+              headLine:headLine || "",
+              image: image || "",
+              points: points || 0,
+              type: type
+            }
+            
           });
         },
         createPost(_, { title, description, insideOnly, type, userId }) {
