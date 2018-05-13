@@ -10,7 +10,7 @@ const sequelize = new Sequelize(process.env.DB_DATABASE, process.env.DB_USERNAME
 });
 
 const User = sequelize.define('user', {
-    id: {
+    id: { 
       type: Sequelize.INTEGER,
       unique: true,
       primaryKey: true,
