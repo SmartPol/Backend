@@ -206,6 +206,9 @@ sequelize.sync().then(() => {
             return Post.find({ where: {id: args.id}}).then((post) => {
               let user = User.find({ where: {id: post.userId }});
               post.creator = user;
+              post.answers = Answer.findAll({ where: {postId: args.id, }});
+              post.comments = Comment.findAll({ where: {postId: args.id }});
+              post.tags = Tag.findAll({ where: {postId: args.id }});
               return post;
             });
           }
