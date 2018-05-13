@@ -102,6 +102,7 @@ var typeDefs = `
       createTag(text: String, postId: ID): Tag
       updatePostVote(postId: ID, increase: Boolean): Post
       updateAnswerVote(answerId: ID, increase: Boolean): Post
+      acceptAnswer(answerId: ID): Answer
     }
     interface Commentable {
         id: ID
@@ -227,6 +228,13 @@ sequelize.sync().then(() => {
               var vote = answer.totalVotes + (increase ? 1 : -1);
               answer.update({
                 totalVotes: vote
+              });
+            });
+        },
+        acceptAnswer(_, {answerId}) {
+          return Answer.find({ where: {id: answerId}}).then((answer) => {
+              answer.update({
+                accepted: true
               });
             });
         },
