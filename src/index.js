@@ -103,6 +103,7 @@ var typeDefs = `
       updatePostVote(postId: ID, increase: Boolean): Post
       updateAnswerVote(answerId: ID, increase: Boolean): Post
       acceptAnswer(answerId: ID): Answer
+      removeAnswer(answerId: ID): Answer
     }
     interface Commentable {
         id: ID
@@ -238,6 +239,9 @@ sequelize.sync().then(() => {
               });
             });
         },
+        removeAnswer(_, {answerId}) {
+          return Answer.destroy({ where: {id: answerId}});
+        },  
         createUser(_, { name, description, headLine, image, points, type}) {
 
           return User.findOrCreate ({
